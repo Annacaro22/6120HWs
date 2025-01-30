@@ -1,8 +1,12 @@
+#ARGS: the positions.json file in bril/test/parse, should have 1 jump
+
 import sys
 import json
 
 
-#Program to count the number of branch commands; the number of times br and jmp are called.
+#Program to count the number of branching commands; the number of times br and jmp are called. Alternatively,
+#the number of arrows in a CFG
+
 count = 0
 program = json.load(sys.stdin)
 functions = (list(program.values())[0])
@@ -16,7 +20,7 @@ while func < len(functions):
         if currdict.get("op") == "jmp":
             count+=1
         if currdict.get("op") == "br":
-            count+=1
+            count+=2 #add two because branch opens up two new possible paths
         i+=1
     func+=1
 

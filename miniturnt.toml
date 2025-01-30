@@ -1,0 +1,2 @@
+command = "brili python3 {filename} < positions.json | brili"
+
