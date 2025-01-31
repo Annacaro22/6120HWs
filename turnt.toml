@@ -1,0 +1,2 @@
+command = "python3 {filename} < combination.json"
+
