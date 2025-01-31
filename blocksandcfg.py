@@ -22,7 +22,6 @@ def main():
 
 
 
-#jump, branch, call, label(no jump just continue)
 def basicblocks(onefunc):
     blocks = []
     labelstoblock = {}
@@ -34,7 +33,7 @@ def basicblocks(onefunc):
     while i < len(instructions): #for inst in instructions
         currdict = instructions[i] #currdict is the current instruction 
 
-        if "label" in currdict.keys():
+        if "label" in currdict.keys(): #label case
             if newblock != []: #since we divide blocks after terminators and after labels, if you have
             #a terminator followed by a label, you get an empty block, which we don't need to store.
                 blocks.append(newblock)
@@ -51,12 +50,12 @@ def basicblocks(onefunc):
             newblock = []
             currlabel = (True, currdict.get("label"))
         else:
-            newblock.append(currdict)
-            if currdict.get("op") == "jump" or currdict.get("op") == "br":
+            newblock.append(currdict) #regular non-terminator non-label command (but also acts on terminators too)
+            if currdict.get("op") == "jump" or currdict.get("op") == "br": #jump or branch cases
                 blocks.append(newblock)
                 if currlabel[0] == True: #curr block has a label
                     labelstoblock[currlabel[1]] = newblock
-                elif nolabel == 0: #first blcok "start"
+                elif nolabel == 0: #first block "start"
                     labelstoblock["start"] = newblock
                     nolabel+=1
                 else: #other nonlabelled block
@@ -68,6 +67,8 @@ def basicblocks(onefunc):
                 currlabel = (False, "")
         i+=1
     
+
+    #to deal with last block:
     blocks.append(newblock)
     if currlabel[0] == True: #current block has a label
         labelstoblock[currlabel[1]] = newblock
