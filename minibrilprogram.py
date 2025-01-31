@@ -10,15 +10,10 @@ import json
 count = 0
 program = json.load(sys.stdin)
 functions = (list(program.values())[0])
-#print(functions)
 func = 0
 while func < len(functions):
     onefunc = functions[func]
-    #onefunc = (list(program.values())[0])[0]
-    #print(onefunc)
     instructions = onefunc.get("instrs")
-    #instructions = (list(instrs.values())[0])
-    #print(instructions)
     i = 0
     while i < len(instructions):
         currdict = instructions[i]
