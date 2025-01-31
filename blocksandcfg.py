@@ -1,6 +1,10 @@
 import sys
 import json
 
+#Program to calculate the basic blocks of a bril program and to create its CFG. Note that these are
+#separated by function. The blocks and CFG will print out in the terminal after running this program.
+#Note that I assert that all blocks have at least one child in my CFG. Leaves therefore point to 'end'.
+
 def main():
     program = json.load(sys.stdin)
     print()
@@ -12,8 +16,6 @@ def main():
         onefunc = functions[func]
         print("\n Basic Blocks in function " + onefunc.get("name") + " are: ")
         blocklabel = basicblocks(onefunc)
-        print("\n labels to blocks: ")
-        print(blocklabel[1])
 
         print("\n CFG in function " + onefunc.get("name") + " is: ")
         print(getcfg(blocklabel[0],blocklabel[1]))        
@@ -39,13 +41,15 @@ def basicblocks(onefunc):
                 blocks.append(newblock)
                 if currlabel[0] == True: #curr block has a label
                     labelstoblock[currlabel[1]] = newblock
+                    print("\n" + currlabel[1] + ":")
                 elif nolabel == 0: # first block "start"
                     labelstoblock["start"] = newblock
                     nolabel+=1
+                    print("\n start:")
                 else: #other nonlabelled block
                     labelstoblock["nolabel" + str(nolabel)] = newblock
                     nolabel+=1
-                print("\n")
+                    print("\n nolabel " + str(nolabel) + ":")
                 print(newblock)
             newblock = []
             currlabel = (True, currdict.get("label"))
@@ -55,13 +59,15 @@ def basicblocks(onefunc):
                 blocks.append(newblock)
                 if currlabel[0] == True: #curr block has a label
                     labelstoblock[currlabel[1]] = newblock
+                    print("\n" + currlabel[1] + ":")
                 elif nolabel == 0: #first block "start"
                     labelstoblock["start"] = newblock
                     nolabel+=1
+                    print("\n start:")
                 else: #other nonlabelled block
                     labelstoblock["nolabel" + str(nolabel)] = newblock
                     nolabel+=1
-                print("\n")
+                    print("\n nolabel " + str(nolabel) + ":")
                 print(newblock)
                 newblock = []
                 currlabel = (False, "")
@@ -72,13 +78,15 @@ def basicblocks(onefunc):
     blocks.append(newblock)
     if currlabel[0] == True: #current block has a label
         labelstoblock[currlabel[1]] = newblock
+        print("\n" + currlabel[1] + ":")
     elif nolabel == 0: #first block "start"
         labelstoblock["start"] = newblock
         nolabel+=1
+        print("\n start:")
     else: #other nonlabelled block
         labelstoblock["nolabel" + str(nolabel)] = newblock
         nolabel+=1
-    print("\n")
+        print("\n nolabel" + str(nolabel) + ":")
     print(newblock)
 
     return [blocks, labelstoblock]
@@ -87,7 +95,8 @@ def basicblocks(onefunc):
 
 
 def getcfg(blocks, labelstoblock):
-
+    currlabel = "start"
+    nextlabel = "end"
     cfg = {}
     for block in blocks:
         lastinstr = block[-1] #last instruction of block
@@ -101,10 +110,14 @@ def getcfg(blocks, labelstoblock):
             cfg[currlabel].append(lastinstr.get("labels")[1]) #2 children blocks
         elif lastinstr.get("op") == "ret":
             cfg[currlabel] = ["end"] #return goes to end
-        elif blocks.index(block) < len(blocks)-1:
-            cfg[currlabel] = [blocks[blocks.index(block)+1]] #falls through to next block
-
-    cfg[currlabel] = ["end"]  #last block goes to end
+        elif blocks.index(block) == len(blocks)-1:
+            cfg[currlabel] = ["end"]  #last block goes to end IF it doesn't end with a jmp/br
+        else: 
+            nextblock = blocks[blocks.index(block)+1]
+            for key, val in labelstoblock.items(): #this is just to get the label of next block
+                if val == nextblock:
+                    nextlabel = key
+            cfg[currlabel] = [nextlabel] #falls through to next block
 
     return cfg
 
