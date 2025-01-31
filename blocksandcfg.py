@@ -7,7 +7,6 @@ import json
 
 def main():
     program = json.load(sys.stdin)
-    print()
 
 
     functions = (list(program.values())[0])
