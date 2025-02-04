@@ -1,0 +1,15 @@
+@main {
+    a: int = const 100;
+    a: int = const 42;
+    fifty: int = const 50;
+    test: bool = lt a fifty;
+    br test .one .two;
+.one:
+    b: int = const 50;
+    b: int = const 25;
+.two:
+    c: int = const 5;
+    c: inst = const 6;
+    print a;
+    print c;
+}
