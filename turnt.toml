@@ -1,2 +1,2 @@
-command = "python3 {filename} < combination.json"
-
+command = "bril2json < {args} | python3 {filename}"
+output.prof = "2"

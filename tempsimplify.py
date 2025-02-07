@@ -6,106 +6,29 @@ import itertools
 def main():
     program = json.load(sys.stdin)
 
-
     functions = (list(program.values())[0])
-    func = 0
-    while func < len(functions):
-        onefunc = functions[func]
 
-        blocks = basicblocks(onefunc.get("instrs"))[0]
+    for func in functions:
+        #do something to function (func)
 
-        #wrap in iteration to convergence, while function is still changing
-        prevfunction = None
-        function = onefunc.get("instrs")
+        #OR
 
-        while function != prevfunction:
-            prevfunction = function.copy()
-            
-            function = defined_not_used(function)
+        x = 0
 
-            blocks = basicblocks(function)[0]
+        basicblockss = basicblocks(func)
+        blocks = basicblockss[0]
+        labelstoblock = basicblockss[1]     
+        for block in blocks:
+            x+=1
 
+        function = list(itertools.chain.from_iterable(blocks))
 
-            j = 0
-            while j < len(blocks):
-                blocks[j] = rewritten(blocks[j])
-                j+=1
+        (func)["instrs"] = function
 
-
-            function = list(itertools.chain.from_iterable(blocks))
-
-
-        (functions[func])["instrs"] = function
-        #putting our updated instructions back into the JSON file
-
-        func+=1
-    
+    #print(program)
 
     with open("outfile.json", "w") as outfile:
         json.dump(program, outfile)
-
-    
-
-
-
-def defined_not_used(function):
-    used = []
-    instructions = function
-
-    i=0
-    while i < len(instructions): #loop through getting used vars
-        currdict = instructions[i] #current instruction
-        if currdict.get("args") is not None:
-            for arg in currdict.get("args"):
-                used.append(arg)      
-        i+=1
-
-
-    j=0
-    while j < len(instructions): #loop through finding assigned vars that aren't used
-        currdict = instructions[j] #current instruction
-        destination = currdict.get("dest")
-        if destination is not None and destination not in used:
-            instructions.remove(currdict)
-        j+=1
-
-    return instructions
-
-
-
-def rewritten(currblock):
-    last_def = {} #defined but not used, variables -> instructions
-
-    for currdict in currblock: #currdict is the current instruction
-        #check for uses (RHS appearances-- using x)
-        if currdict.get("args") is not None:
-            for arg in currdict.get("args"):
-                if arg in last_def.keys():
-                    del last_def[arg]
-
-        #check for defs (LHS appearances-- rewriting x)
-        instrucdest = currdict.get("dest")
-        if instrucdest is not None and instrucdest in last_def:
-            currblock.remove(last_def[instrucdest]) #deleting from instructions, not from last_def
-            
-        last_def[instrucdest] = currdict
-
-    return currblock
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -114,7 +37,7 @@ def basicblocks(onefunc):
     blocks = []
     labelstoblock = {}
     currlabel = [False, ""]
-    instructions = onefunc
+    instructions = onefunc.get("instrs")
     i = 0
     newblock = []
     nolabel = 0
@@ -171,6 +94,9 @@ def basicblocks(onefunc):
     print(labelstoblock)"""
 
     return [blocks, labelstoblock]
+
+
+
 
 
 

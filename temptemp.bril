@@ -1,15 +1,16 @@
 @main {
-    a: int = const 100;
-    a: int = const 42;
-    fifty: int = const 50;
-    test: bool = lt a fifty;
-    br test .one .two;
-.one:
-    b: int = const 50;
-    b: int = const 25;
-.two:
-    c: int = const 5;
-    c: inst = const 6;
-    print a;
-    print c;
+    a: int = const 4;
+    b: int = const 2;
+
+    sum1: int = add a b;
+    sum2: int = add a b;
+    prod1: int = mul sum1 sum2;
+
+    sum1: int = const 0;
+    sum2: int = const 0;
+
+    sum3: int = add a b;
+    prod2: int = mul sum3 sum3;
+
+    print prod2;
 }

@@ -11,35 +11,68 @@ def main():
     func = 0
     while func < len(functions):
         onefunc = functions[func]
+        #print("curr function is " + onefunc.get("name")) HAD UNCOMMENTED
 
         blocks = basicblocks(onefunc.get("instrs"))[0]
 
         #wrap in iteration to convergence, while function is still changing
         prevfunction = None
         function = onefunc.get("instrs")
+        #print("preprocess " + str(function))
 
         while function != prevfunction:
             prevfunction = function.copy()
+            #print("prevfunction assigned as " + str(prevfunction))
             
             function = defined_not_used(function)
+            #print("afterdefined " + str(function))
 
             blocks = basicblocks(function)[0]
 
+            #print("blocks before " + str(blocks))
 
             j = 0
             while j < len(blocks):
                 blocks[j] = rewritten(blocks[j])
                 j+=1
 
+            #print("blocks " + str(blocks))
+
+            #(different method of going to convergence, going func block0 block0 block0 func block1 block1...
+            #instead of func block0 func block1 func block2...):
+            """#wrap these in an iteration to convergence, while basic block is still changing
+                prevblock = None
+                while blocks[j] != prevblock:
+                    prevblock = blocks[j]
+                    blocks[j] = rewritten(blocks[j])"""
+
+                
+            """print("block " + str(j))
+            print(blocks[j])"""
+
+            #this will run defined but not used on the whole function, then rewritten on our current block, then
+            #defined not used on whole function again, then rewritten on our current block... etc. until the current
+            #block has no rewritten variables and the whole program has no defined not used. then iterate to the next
+            #block and do it again.
 
             function = list(itertools.chain.from_iterable(blocks))
 
+            #print("function is " + str(function))
+            #print("prevfunction is " + str(prevfunction))
+
+        #print("final \n" + str(function)) HAD UNCOMMENTED
+
+        #function here is really the list of instructions
+        #realfunc = { "instrs" : function, "name" : main??}
 
         (functions[func])["instrs"] = function
         #putting our updated instructions back into the JSON file
 
         func+=1
     
+    #print("program: ") HAD UNCOMMENTED
+    #print(program)
+
 
     with open("outfile.json", "w") as outfile:
         json.dump(program, outfile)
@@ -50,6 +83,7 @@ def main():
 
 def defined_not_used(function):
     used = []
+    #instructions = function.get("instrs"
     instructions = function
 
     i=0

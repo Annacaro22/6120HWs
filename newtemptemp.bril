@@ -1,0 +1,9 @@
+@main {
+    a: int = const 4;
+    b: int = const 2;
+    jmp .next;
+.next:
+    v7: int = id b;
+    b: int = id a;
+    v12: int = id b;
+}
