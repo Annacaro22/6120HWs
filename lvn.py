@@ -25,7 +25,6 @@ def main():
     with open("outfile.json", "w") as outfile:
         json.dump(program, outfile)
 
-    print(program)
 
 
 
