@@ -62,18 +62,19 @@ def dataflow(blockslabel, cfg, init, merge, transfer):
     inn = {}
     inn["start"] = init
     out = {}
-    for b in blocks: #ERROR: need to make my dicts keys be labels of blocks not blocks themselves bc lists (which
-    #is what blocks are, just lists of instrs) can't be dict keys :pensive: need to update this all over
-        out[b] = init
+    for label in labels.keys():
+        out[label] = init
 
-    worklist = blocks
+    #Remember: inn and out have block labels as keys, and lists of instructions (the reaching definitions) as values
+
+    worklist = labels.keys()
     while len(worklist) > 0:
-        block = blocks.pop(0)
+        block = worklist.pop(0)
 
         reverse = cfgreverse(cfg)
         preds = []
         for p in reverse(block):
-            preds.append(out[label[p]])
+            preds.append(out[p])
         inn[block] = merge(preds)
 
         oldoutblock = out[block]
@@ -82,13 +83,20 @@ def dataflow(blockslabel, cfg, init, merge, transfer):
 
         if out[block] != oldoutblock:
             for succ in cfg[block]:
-                worklist.append(label.get(succ))
+                worklist.append(succ)
+
+
+def block2label(block, labels2block):
+    for label, blockk in labels2block.items():
+        if blockk == block:
+            return label
+#If 2 blocks are identical except for their label might return the wrong one??
 
 
 def cfgreverse(cfg):
     reverse = {}
     for block in cfg.keys():
-        for succ in cfg[blocks]:
+        for succ in cfg[block]:
             if succ in reverse.keys():
                 reverse[succ] = reverse[succ] + [block]
             else:
