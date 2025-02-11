@@ -6,12 +6,12 @@ def main():
 
     functions = (list(program.values())[0])
     for function in functions:
+        print("function " + str(function.get("name")))
+
         blockslabel = basicblocks(function.get("instrs"))
         cfg = getcfg(blockslabel[0], blockslabel[1])
 
         reachingdefs(blockslabel, cfg, function)
-
-        dataflow(blockslabel, cfg)
 
 
     with open("outfile.json", "w") as outfile:
@@ -22,29 +22,39 @@ def main():
 
 
 def reachingdefs(blockslabel, cfg, function):
-    init = {"dest" : function.get("args")}
+    init = [{"dest" : function.get("args")}]
 
-    def bigunion(l): #l is a list of sets to merge
-        union = {}
-        for s in l:
-            union = union.union(s)
-        return union
+    def bigunion(l): #l is a list of lists to merge as if they were sets (must store as list of lists since elts are dicts)
+        i = 0
+        union = []
+        while i < len(l):
+            if l[i] is not None:
+                for instr in l[i]:
+                    if instr not in union:
+                        union.append(instr)
+            i+=1
          
     merge = bigunion
 
 
-    def killsanddefs(block, inb):
+    def killsanddefs(blocklabel, inb, labels):
         #inb is set of active defs at start of block
-        currdefs = inb #currdefs is a SET
+        currdefs = inb #currdefs is a LIST. I know originally we want to be sets but can't store a set of dicts
+        #at least not in python. so i'm doing list of dicts
         killer = False
+        block = labels[blocklabel]
         for instr in block:
-            for olddef in currdefs:
-                if instr.get("dest") == olddef.get("dest"): #if we are defining to a var that is defined to in currdefs already
-                    currdefs.remove(olddef) #instr kills olddef
-                    currdefs.add(instr) #instr replaces olddef
-                    killer = True #use killer to process whether current instr has already been processed as a killer def
-            if killer == False and "dest" in instr.keys(): #else branch essentially; NEW definition
-                currdefs.add(instr) #add new def to definitions
+            if currdefs is not None:
+                for olddef in currdefs:
+                    if instr.get("dest") == olddef.get("dest"): #if we are defining to a var that is defined to in currdefs already
+                        currdefs.remove(olddef) #instr kills olddef
+                        currdefs.append(instr) #instr replaces olddef
+                        killer = True #use killer to process whether current instr has already been processed as a killer def
+            if killer == False and "dest" in list(instr.keys()): #else branch essentially; NEW definition
+                if currdefs is None:
+                    currdefs = [instr]
+                else:
+                    currdefs.append(instr) #add new def to definitions
 
             killer = False
         outb = currdefs
@@ -62,42 +72,37 @@ def dataflow(blockslabel, cfg, init, merge, transfer):
     inn = {}
     inn["start"] = init
     out = {}
-    for label in labels.keys():
+    for label in list(labels.keys()):
         out[label] = init
 
     #Remember: inn and out have block labels as keys, and lists of instructions (the reaching definitions) as values
 
-    worklist = labels.keys()
+    worklist = list(labels.keys())
     while len(worklist) > 0:
         block = worklist.pop(0)
 
         reverse = cfgreverse(cfg)
         preds = []
-        for p in reverse(block):
-            preds.append(out[p])
+        if block in list(reverse.keys()):
+            for p in reverse[block]:
+                preds.append(out[p])
         inn[block] = merge(preds)
 
-        oldoutblock = out[block]
+        if block != "end":
+            oldoutblock = out[block]
 
-        out[block] = transfer(block, inn[block])
+            out[block] = transfer(block, inn[block], labels)
 
-        if out[block] != oldoutblock:
-            for succ in cfg[block]:
-                worklist.append(succ)
-
-
-def block2label(block, labels2block):
-    for label, blockk in labels2block.items():
-        if blockk == block:
-            return label
-#If 2 blocks are identical except for their label might return the wrong one??
+            if out[block] != oldoutblock:
+                for succ in cfg[block]:
+                    worklist.append(succ)
 
 
 def cfgreverse(cfg):
     reverse = {}
-    for block in cfg.keys():
+    for block in list(cfg.keys()):
         for succ in cfg[block]:
-            if succ in reverse.keys():
+            if succ in list(reverse.keys()):
                 reverse[succ] = reverse[succ] + [block]
             else:
                 reverse[succ] = [block]
@@ -107,6 +112,7 @@ def cfgreverse(cfg):
 def basicblocks(onefunc):
     blocks = []
     labelstoblock = {}
+    labelsnotbools = {}
     currlabel = [False, ""]
     instructions = onefunc
     i = 0
@@ -115,16 +121,20 @@ def basicblocks(onefunc):
     while i < len(instructions): #for inst in instructions
         currdict = instructions[i] #currdict is the current instruction 
 
-        if "label" in currdict.keys(): #label case
-            blocks.append(newblock)
-            if currlabel[0] == True: #curr block has a label
-                labelstoblock[currlabel] = newblock
-            elif nolabel == 0: # first block "start"
-                labelstoblock[(False,"start")] = newblock
-                nolabel+=1
-            else: #other nonlabelled block
-                labelstoblock[False,("nolabel" + str(nolabel))] = newblock
-                nolabel+=1
+        if "label" in list(currdict.keys()): #label case
+            if newblock != []:
+                blocks.append(newblock)
+                if currlabel[0] == True: #curr block has a label
+                    labelstoblock[currlabel] = newblock
+                    labelsnotbools[currlabel[1]] = newblock
+                elif nolabel == 0: # first block "start"
+                    labelstoblock[(False,"start")] = newblock
+                    labelsnotbools["start"] = newblock
+                    nolabel+=1
+                else: #other nonlabelled block
+                    labelstoblock[False,("nolabel" + str(nolabel))] = newblock
+                    labelsnotbools["nolabel" + str(nolabel)] = newblock
+                    nolabel+=1
             
             newblock = [currdict]
             currlabel = (True, currdict.get("label"))
@@ -134,11 +144,14 @@ def basicblocks(onefunc):
                 blocks.append(newblock)
                 if currlabel[0] == True: #curr block has a label
                     labelstoblock[currlabel] = newblock
+                    labelsnotbools[currlabel[1]] = newblock
                 elif nolabel == 0: # first block "start"
                     labelstoblock[(False,"start")] = newblock
+                    labelsnotbools["start"] = newblock
                     nolabel+=1
                 else: #other nonlabelled block
                     labelstoblock[False,("nolabel" + str(nolabel))] = newblock
+                    labelsnotbools["nolabel" + str(nolabel)] = newblock
                     nolabel+=1
                 newblock = []
                 currlabel = (False, "")
@@ -149,14 +162,17 @@ def basicblocks(onefunc):
     blocks.append(newblock)
     if currlabel[0] == True: #curr block has a label
         labelstoblock[currlabel] = newblock
+        labelsnotbools[currlabel[1]] = newblock
     elif nolabel == 0: # first block "start"
         labelstoblock[(False,"start")] = newblock
+        labelsnotbools["start"] = newblock
         nolabel+=1
     else: #other nonlabelled block
         labelstoblock[False,("nolabel" + str(nolabel))] = newblock
+        labelsnotbools["nolabel" + str(nolabel)] = newblock
         nolabel+=1
 
-    return [blocks, labelstoblock]
+    return [blocks, labelsnotbools]
 
 
 
