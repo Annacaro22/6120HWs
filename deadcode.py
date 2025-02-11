@@ -43,6 +43,8 @@ def main():
 
     with open("outfile.json", "w") as outfile:
         json.dump(program, outfile)
+    #I learned how to do this writing json to outfile from this stackoverflow post: 
+    #https://stackoverflow.com/questions/12309269/how-do-i-write-json-data-to-a-file
 
     
 
