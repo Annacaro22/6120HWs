@@ -6,12 +6,24 @@ def main():
 
     functions = (list(program.values())[0])
     for function in functions:
-        print("function " + str(function.get("name")))
+        print("\n \n function " + str(function.get("name")))
 
         blockslabel = basicblocks(function.get("instrs"))
         cfg = getcfg(blockslabel[0], blockslabel[1])
 
-        reachingdefs(blockslabel, cfg, function)
+        print("cfg for function: " + str(cfg))
+
+        results = reachingdefs(blockslabel, cfg, function)
+        inn = results[0]
+        out = results[1]
+
+        for block in blockslabel[1]:
+            print("\nfor block " + block + ", in to block is:")
+            print(inn[block])
+            print("out of block is:")
+            print(out[block])
+
+
 
 
     with open("outfile.json", "w") as outfile:
@@ -22,7 +34,10 @@ def main():
 
 
 def reachingdefs(blockslabel, cfg, function):
-    init = [{"dest" : function.get("args")}]
+    init = []
+    if "args" in list(function.keys()):
+        for arg in function.get("args"):
+            init.append({"dest" : arg.get("name")})
 
     def bigunion(l): #l is a list of lists to merge as if they were sets (must store as list of lists since elts are dicts)
         i = 0
@@ -33,13 +48,14 @@ def reachingdefs(blockslabel, cfg, function):
                     if instr not in union:
                         union.append(instr)
             i+=1
+        return union
          
     merge = bigunion
 
 
     def killsanddefs(blocklabel, inb, labels):
         #inb is set of active defs at start of block
-        currdefs = inb #currdefs is a LIST. I know originally we want to be sets but can't store a set of dicts
+        currdefs = inb.copy() #currdefs is a LIST. I know originally we want to be sets but can't store a set of dicts
         #at least not in python. so i'm doing list of dicts
         killer = False
         block = labels[blocklabel]
@@ -48,12 +64,13 @@ def reachingdefs(blockslabel, cfg, function):
                 for olddef in currdefs:
                     if instr.get("dest") == olddef.get("dest"): #if we are defining to a var that is defined to in currdefs already
                         currdefs.remove(olddef) #instr kills olddef
-                        currdefs.append(instr) #instr replaces olddef
+                        if instr not in currdefs:
+                            currdefs.append(instr) #instr replaces olddef
                         killer = True #use killer to process whether current instr has already been processed as a killer def
             if killer == False and "dest" in list(instr.keys()): #else branch essentially; NEW definition
                 if currdefs is None:
                     currdefs = [instr]
-                else:
+                elif instr not in currdefs:
                     currdefs.append(instr) #add new def to definitions
 
             killer = False
@@ -62,7 +79,8 @@ def reachingdefs(blockslabel, cfg, function):
 
     transfer = killsanddefs
 
-    dataflow(blockslabel, cfg, init, merge,transfer)
+    results = dataflow(blockslabel, cfg, init, merge,transfer)
+    return results
 
 
 def dataflow(blockslabel, cfg, init, merge, transfer):
@@ -80,22 +98,31 @@ def dataflow(blockslabel, cfg, init, merge, transfer):
     worklist = list(labels.keys())
     while len(worklist) > 0:
         block = worklist.pop(0)
+        #print("\n for block " + str(block) + ",")
 
         reverse = cfgreverse(cfg)
         preds = []
         if block in list(reverse.keys()):
             for p in reverse[block]:
+                #print("pred of " + str(block) + " is " + str(p))
                 preds.append(out[p])
-        inn[block] = merge(preds)
+        if block != "start":
+            inn[block] = merge(preds)
+
+        #print("in to block is " + str(inn[block]))
 
         if block != "end":
             oldoutblock = out[block]
 
             out[block] = transfer(block, inn[block], labels)
+            #print("out of block is " + str(out[block]))
 
             if out[block] != oldoutblock:
                 for succ in cfg[block]:
                     worklist.append(succ)
+        #else:
+            #print("block is end; no out!")
+    return (inn, out)
 
 
 def cfgreverse(cfg):

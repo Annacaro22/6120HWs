@@ -1,0 +1,37 @@
+{
+    "functions": [
+      {
+        "args": [
+          {
+            "name": "n",
+            "type": "int"
+          },
+          {
+            "name": "k",
+            "type": "int"
+          }
+        ],
+        "instrs": [
+          {
+            "args": [
+              "n",
+              "k"
+            ],
+            "dest": "final",
+            "funcs": [
+              "combo"
+            ],
+            "op": "call",
+            "type": "int"
+          },
+          {
+            "args": [
+              "final"
+            ],
+            "op": "print"
+          }
+        ],
+        "name": "main"
+      }
+    ]
+}

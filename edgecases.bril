@@ -1,0 +1,16 @@
+@main (n:int,k:int) {
+    final: int = add n k;
+    ret final;
+    jmp .next;
+.next:
+    n: int = id k;
+    jmp .then;
+.then:
+    final: int = id n;
+    jmp .next;
+}
+
+
+@combo {
+    x: int = const 0;
+}
