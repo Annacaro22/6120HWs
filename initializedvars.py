@@ -12,8 +12,9 @@ def main():
         cfg = getcfg(blockslabel[0], blockslabel[1])
 
         print("cfg for function: " + str(cfg))
+        print("Reverse cfg: " + str(cfgreverse(cfg)))
 
-        results = reachingdefs(blockslabel, cfg, function)
+        results = initializedvars(blockslabel, cfg, function)
         inn = results[0]
         out = results[1]
 
@@ -33,11 +34,32 @@ def main():
     #https://stackoverflow.com/questions/12309269/how-do-i-write-json-data-to-a-file
 
 
-def reachingdefs(blockslabel, cfg, function):
+def initializedvars(blockslabel, cfg, function):
     init = []
     if "args" in list(function.keys()):
         for arg in function.get("args"):
-            init.append({"dest" : arg.get("name")})
+            init.append(arg.get("name"))
+
+    def bigintersection(l): #l is a list of lists to merge as if they were sets
+        intersection = l[0].copy()
+        i = 1
+        while i < len(l):
+            if intersection is not None:
+                for instr in intersection:
+                    if instr not in l[i]:
+                        intersection.remove(instr)
+            else:
+                intersection = []
+            i+=1
+        return intersection
+
+    def setconversion(l):
+        intersection = set(l[0].copy())
+        i = 1
+        while i < len(l):
+            intersection = intersection & set(l[i])
+            i+=1
+        return list(intersection)
 
     def bigunion(l): #l is a list of lists to merge as if they were sets (must store as list of lists since elts are dicts)
         i = 0
@@ -50,36 +72,27 @@ def reachingdefs(blockslabel, cfg, function):
             i+=1
         return union
          
-    merge = bigunion
+    #merge = bigunion
+
+         
+    merge = setconversion
 
 
-    def killsanddefs(blocklabel, inb, labels):
-        #inb is set of active defs at start of block
-        currdefs = inb.copy() #currdefs is a LIST. I know originally we want to be sets but can't store a set of dicts
-        #at least not in python. so i'm doing list of dicts
-        killer = False
+    def addnewinits(blocklabel, inb, labels):
+        #inb is set of init vars at start of block
+        currinits = inb.copy() #currinits is a LIST.
         block = labels[blocklabel]
         for instr in block:
-            if currdefs is not None:
-                for olddef in currdefs:
-                    if instr.get("dest") == olddef.get("dest"): #if we are defining to a var that is defined to in currdefs already
-                        currdefs.remove(olddef) #instr kills olddef
-                        if instr not in currdefs:
-                            currdefs.append(instr) #instr replaces olddef
-                        killer = True #use killer to process whether current instr has already been processed as a killer def
-            if killer == False and "dest" in list(instr.keys()): #else branch essentially; NEW definition
-                if currdefs is None:
-                    currdefs = [instr]
-                elif instr not in currdefs:
-                    currdefs.append(instr) #add new def to definitions
-
-            killer = False
-        outb = currdefs
+            if "dest" in list(instr.keys()):
+                if instr.get("dest") not in currinits:
+                    currinits.append(instr.get("dest"))
+                    #print("adding " + instr.get("dest"))
+        outb = currinits
         return outb
 
-    transfer = killsanddefs
+    transfer = addnewinits
 
-    results = dataflow(blockslabel, cfg, init, merge,transfer)
+    results = dataflow(blockslabel, cfg, init, merge, transfer)
     return results
 
 
@@ -93,13 +106,12 @@ def dataflow(blockslabel, cfg, init, merge, transfer):
     for label in list(labels.keys()):
         out[label] = init
 
-    #Remember: inn and out have block labels as keys, and lists of instructions (the reaching definitions) as values
+    #Remember: inn and out have block labels as keys, and lists of strings (the initialized variables) as values
 
     worklist = list(labels.keys())
     while len(worklist) > 0:
-        #print(worklist)
         block = worklist.pop(0)
-        #print("\n for block " + str(block) + ",")
+        print("\n for block " + str(block) + ",")
 
         reverse = cfgreverse(cfg)
         preds = []
@@ -111,6 +123,11 @@ def dataflow(blockslabel, cfg, init, merge, transfer):
             inn[block] = merge(preds)
         else:
             inn[block] = init
+        #ERROR: There's some bug in the way I'm defining merge I think. It's causing an infinite loop
+        #in reaching defs (disappears when i change from union to intersection), and it's giving me wrong
+        #answers here (why is primetest deleting t0? every path should have it initialized). Idk what's going
+        #on here but something is broken with merge. FIXED DEFINITIONS. or it doesn't loop now at least lol.
+        #not sure what's going on with initialized vars though. might just give up and just do reaching definitions.
 
         #print("in to block is " + str(inn[block]))
 
@@ -120,10 +137,9 @@ def dataflow(blockslabel, cfg, init, merge, transfer):
             out[block] = transfer(block, inn[block], labels)
             #print("out of block is " + str(out[block]))
 
-            """if out[block] != oldoutblock: #may need to be irrespective of order? since sets not lists
+            """if out[block] != oldoutblock:
                 for succ in cfg[block]:
-                    if succ not in worklist:
-                        worklist.append(succ)"""
+                    worklist.append(succ)"""
 
             changed = False
             for x in out[block]:
@@ -137,8 +153,6 @@ def dataflow(blockslabel, cfg, init, merge, transfer):
                 for succ in cfg[block]:
                     if succ not in worklist:
                         worklist.append(succ)
-
-
         #else:
             #print("block is end; no out!")
     return (inn, out)

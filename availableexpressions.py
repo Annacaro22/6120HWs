@@ -13,7 +13,7 @@ def main():
 
         print("cfg for function: " + str(cfg))
 
-        results = reachingdefs(blockslabel, cfg, function)
+        results = availablexps(blockslabel, cfg, function)
         inn = results[0]
         out = results[1]
 
@@ -33,34 +33,35 @@ def main():
     #https://stackoverflow.com/questions/12309269/how-do-i-write-json-data-to-a-file
 
 
-def reachingdefs(blockslabel, cfg, function):
+def availablexps(blockslabel, cfg, function):
     init = []
-    if "args" in list(function.keys()):
-        for arg in function.get("args"):
-            init.append({"dest" : arg.get("name")})
 
-    def bigunion(l): #l is a list of lists to merge as if they were sets (must store as list of lists since elts are dicts)
-        i = 0
-        union = []
+    def bigintersection(l): #l is a list of lists to merge as if they were sets (must store as list of lists since elts are dicts)
+        intersection = l[0]
+        i = 1
         while i < len(l):
-            if l[i] is not None:
-                for instr in l[i]:
-                    if instr not in union:
-                        union.append(instr)
+            if intersection is not None:
+                for instr in intersection:
+                    if instr not in l[i]:
+                        intersection.remove(instr)
             i+=1
-        return union
+        return intersection
          
-    merge = bigunion
+    merge = bigintersection
 
 
-    def killsanddefs(blocklabel, inb, labels):
+    def addnewexps(blocklabel, inb, labels):
         #inb is set of active defs at start of block
-        currdefs = inb.copy() #currdefs is a LIST. I know originally we want to be sets but can't store a set of dicts
+        newexps = inb.copy() #newexps is a LIST. I know originally we want to be sets but can't store a set of dicts
         #at least not in python. so i'm doing list of dicts
-        killer = False
         block = labels[blocklabel]
         for instr in block:
-            if currdefs is not None:
+
+
+            #yknow i've decided not to do this one, initialized vars seems easier
+
+
+            if newexps is not None:
                 for olddef in currdefs:
                     if instr.get("dest") == olddef.get("dest"): #if we are defining to a var that is defined to in currdefs already
                         currdefs.remove(olddef) #instr kills olddef
@@ -97,7 +98,6 @@ def dataflow(blockslabel, cfg, init, merge, transfer):
 
     worklist = list(labels.keys())
     while len(worklist) > 0:
-        #print(worklist)
         block = worklist.pop(0)
         #print("\n for block " + str(block) + ",")
 
@@ -107,10 +107,8 @@ def dataflow(blockslabel, cfg, init, merge, transfer):
             for p in reverse[block]:
                 #print("pred of " + str(block) + " is " + str(p))
                 preds.append(out[p])
-        if len(preds) >= 1:
+        if block != "start":
             inn[block] = merge(preds)
-        else:
-            inn[block] = init
 
         #print("in to block is " + str(inn[block]))
 
@@ -120,25 +118,9 @@ def dataflow(blockslabel, cfg, init, merge, transfer):
             out[block] = transfer(block, inn[block], labels)
             #print("out of block is " + str(out[block]))
 
-            """if out[block] != oldoutblock: #may need to be irrespective of order? since sets not lists
+            if out[block] != oldoutblock:
                 for succ in cfg[block]:
-                    if succ not in worklist:
-                        worklist.append(succ)"""
-
-            changed = False
-            for x in out[block]:
-                if x not in oldoutblock:
-                    changed = True
-            for y in oldoutblock:
-                if y not in out[block]:
-                    changed = True
-            
-            if changed == True:
-                for succ in cfg[block]:
-                    if succ not in worklist:
-                        worklist.append(succ)
-
-
+                    worklist.append(succ)
         #else:
             #print("block is end; no out!")
     return (inn, out)

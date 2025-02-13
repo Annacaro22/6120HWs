@@ -1,0 +1,22 @@
+@main (n:int,k:int) {
+    final: int = add n k;
+    ret final;
+    nneg: bool = lt n zero;
+    br nneg .next .then;
+.next:
+    n: int = id k;
+    z: int = const 0;
+    q: int = const 0;
+    jmp .final;
+.then:
+    final: int = id n;
+    q: int = const 0;
+    jmp .final;
+.final:
+    y: int = const 0;
+}
+
+
+@combo {
+    x: int = const 0;
+}
