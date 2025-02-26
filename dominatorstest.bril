@@ -1,0 +1,4 @@
+@main {
+    final: int = call @combo n k;
+    print final;
+}
