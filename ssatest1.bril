@@ -1,0 +1,17 @@
+@main (n:int) {
+    a: int = const 4;
+    b: int = const 2;
+    nneg: bool = lt n zero;
+    br nneg .left .right;
+
+.left:
+    sum: int = add a b;
+    c: int = id sum
+
+.right:
+    prod: int = mul a b;
+    c: int = id prod;
+
+.result:
+    ret c;
+}
