@@ -1,0 +1,23 @@
+@main (n:int) {
+    a: int = const 4;
+    b: int = const 2;
+    counter: int = const 0;
+    forty: int = const 40;
+    lguardy: bool = gt counter forty;
+    br lguardy .header .otherprehead;
+
+.otherprehead:
+    a: inst = const 6;
+
+.header:
+    lguard: bool = gt counter forty;
+    sum: int = add a b;
+    br lguard .return .loop;
+    
+.loop:
+    counter: int = add counter sum;
+    jmp .header;
+
+.return:
+    ret counter;
+}
