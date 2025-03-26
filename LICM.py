@@ -72,9 +72,6 @@ def LICM(cfg, reverse, blockslabel, function, inn, out):
 
 
 def loopLICM(loop, blockslabel, cfg, function, header, preheader, inn, out, mergepre):
-    #print("\n curr loop is " + str(loop))
-
-    #print("loopLICM labels2blocks.keys " + str(blockslabel.keys()))
     #find loop invariants
     loopInvariants = []
 
@@ -101,16 +98,11 @@ def loopLICM(loop, blockslabel, cfg, function, header, preheader, inn, out, merg
                     if (instr, block) not in loopInvariants:
                         loopInvariants.append((instr, block))
 
-
-    #print("loop invariants " + str(loopInvariants))
-
     #find loop invariants that are safe to move
     safeToMove = []
     for instr, block in loopInvariants:
         if SafeToMove(instr, block, loopInvariants, cfg, inn, blockslabel, loop):
             safeToMove.append((instr, block))
-
-    #print("safe to move " + str(safeToMove))
 
     #possibly write merged preheader first
     reverse = cfgreverse(cfg)
@@ -137,7 +129,6 @@ def loopLICM(loop, blockslabel, cfg, function, header, preheader, inn, out, merg
 
     #move the loop invariant
     for instr, block in safeToMove:
-        print("moving " + str(instr))
 
         blockd = blockslabel[block]
         preheaderd = blockslabel[preheader]
@@ -261,10 +252,7 @@ def SafeToMove(instr, blockl, loopinvariants, cfg, inn, blockslabel, loop): #blo
 
 
 def natLoops(cfg, reverse):
-    #TODO: I think my doms might be broken :( end shouldn't be a dom of cond!!
-    #print("original cfg: " + str(cfg))
     doms = finddoms(cfg)[0]
-    #print("original doms: " + str(doms))
     newcfg = {}
     natloops = {}
 
@@ -274,20 +262,10 @@ def natLoops(cfg, reverse):
         oldbackedges = backedges
         for node in cfg.keys():
             for child in cfg[node]:
-                #print("node, child: " + str(node) + ", " + str(child))
-                """if node in newcfg.keys():
-                    newcfg[node] = newcfg[node] + [child]
-                else:
-                    newcfg[node] = [child]
-                newdoms = finddoms(newcfg)[0]
-                #print("newcfg: " + str(newcfg))
-                #print("newdoms: " + str(newdoms))"""
                 if child in doms[node]:
-                    if (child, node) not in backedges: #otherwise both directions will be put in
-                        #print("add to backedges")
+                    if (child, node) not in backedges: #otherwise both directions will be put in\
                         backedges.append((node, child))
-
-    #print("backedges: " + str(backedges))
+                        
 
     for (A, B) in backedges:
         loopy = [A, B]
