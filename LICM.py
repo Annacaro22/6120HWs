@@ -43,25 +43,28 @@ def main():
 
 def LICM(cfg, reverse, blockslabel, function, inn, out):
     natloops = natLoops(cfg, reverse)
+    newpre = 0
 
 
     for header, loop in natloops.items():
         if len(reverse[header]) == 1:
             mergepre = True
-            cfg = mergePreheaders(cfg, reverse, header, blockslabel, loop)[1]
-            blockslabel = mergePreheaders(cfg, reverse, header, blockslabel, loop)[0]
+            newpre+=1
+            cfg = mergePreheaders(cfg, reverse, header, blockslabel, loop, newpre)[1]
+            blockslabel = mergePreheaders(cfg, reverse, header, blockslabel, loop, newpre)[0]
             reverse = cfgreverse(cfg)
-            preheader = "singlePre"
+            preheader = "singlePre" + str(newpre)
         else:
             if len(reverse[header]) == 2:
                 mergepre = False
                 preheader = (reverse[header])[0]
             else:
                 mergepre = True
-                cfg = mergePreheaders(cfg, reverse, header, blockslabel, loop)[1]
-                blockslabel = mergePreheaders(cfg, reverse, header, blockslabel, loop)[0]
+                newpre+=1
+                cfg = mergePreheaders(cfg, reverse, header, blockslabel, loop, newpre)[1]
+                blockslabel = mergePreheaders(cfg, reverse, header, blockslabel, loop, newpre)[0]
                 reverse = cfgreverse(cfg)
-                preheader = "singlePre"
+                preheader = "singlePre" + str(newpre)
 
         function = loopLICM([header] + loop, blockslabel, cfg, function, header, preheader, inn, out, mergepre)
     return function
@@ -69,6 +72,9 @@ def LICM(cfg, reverse, blockslabel, function, inn, out):
 
 
 def loopLICM(loop, blockslabel, cfg, function, header, preheader, inn, out, mergepre):
+    #print("\n curr loop is " + str(loop))
+
+    #print("loopLICM labels2blocks.keys " + str(blockslabel.keys()))
     #find loop invariants
     loopInvariants = []
 
@@ -95,36 +101,43 @@ def loopLICM(loop, blockslabel, cfg, function, header, preheader, inn, out, merg
                     if (instr, block) not in loopInvariants:
                         loopInvariants.append((instr, block))
 
+
+    #print("loop invariants " + str(loopInvariants))
+
     #find loop invariants that are safe to move
     safeToMove = []
     for instr, block in loopInvariants:
         if SafeToMove(instr, block, loopInvariants, cfg, inn, blockslabel, loop):
             safeToMove.append((instr, block))
 
+    #print("safe to move " + str(safeToMove))
+
     #possibly write merged preheader first
     reverse = cfgreverse(cfg)
-    if "singlePre" in reverse.keys():
-        oldpreheads = reverse["singlePre"]
+    if preheader in reverse.keys():
+        if mergepre:
+            oldpreheads = reverse[preheader]
 
-        instrlist = function.get("instrs")
+            instrlist = function.get("instrs")
 
-        for blockl in oldpreheads:
-            block = blockslabel[blockl]
-            for instr in block:
-                if instr.get("op") == "br" or instr.get("op") == "jmp":
-                    if header in instr.get("labels"): #change any jmp or br instructions from header to singlepre
-                        oldinstr = instr
-                        newinstr = instr
-                        newinstr.get("labels").insert(instr.get("labels").index(header), "singlePre")
-                        newinstr.get("labels").remove(header)
+            for blockl in oldpreheads:
+                block = blockslabel[blockl]
+                for instr in block:
+                    if instr.get("op") == "br" or instr.get("op") == "jmp":
+                        if header in instr.get("labels"): #change any jmp or br instructions from header to singlepre
+                            oldinstr = instr
+                            newinstr = instr
+                            newinstr.get("labels").insert(instr.get("labels").index(header), preheader)
+                            newinstr.get("labels").remove(header)
 
-                        instrlist.insert(instrlist.index(oldinstr), newinstr)
-                        instrlist.remove(oldinstr)
+                            instrlist.insert(instrlist.index(oldinstr), newinstr)
+                            instrlist.remove(oldinstr)
 
-        instrlist.insert(instrlist.index({"label": header}), {"label": "singlePre"})
+            instrlist.insert(instrlist.index({"label": header}), {"label": preheader})
 
     #move the loop invariant
     for instr, block in safeToMove:
+        print("moving " + str(instr))
 
         blockd = blockslabel[block]
         preheaderd = blockslabel[preheader]
@@ -143,7 +156,7 @@ def loopLICM(loop, blockslabel, cfg, function, header, preheader, inn, out, merg
         reverse = cfgreverse(cfg)
         if preheader in reverse.keys():
             if mergepre:
-                insertindex = instrlist.index({'label' : 'singlePre'}) + 1
+                insertindex = instrlist.index({'label' : preheader}) + 1
             else:
                 preheaderindex = instrlist.index({'label' : preheader}) + 1
                 insertindex = preheaderindex + len(preheaderd)
@@ -208,8 +221,13 @@ def isLoopInvariant(instr, blockl, loopinvariants, blockslabel, cfg, function, l
 
 def SafeToMove(instr, blockl, loopinvariants, cfg, inn, blockslabel, loop): #block is block label
     doms = finddoms(cfg)[0]
+
+    #Has side effects
+    if instr.get("op") == "print" or instr.get("op") == "malloc" or instr.get("op") == "div" or instr.get("op") == "ret" or instr.get("op") == "bool":
+        return False
+
     #Definition dominates all uses
-    alluses = inn['end']
+    alluses = inn['realend']
     reachy = []    
     if instr.get("dest") is not None:
         for instruc in alluses:
@@ -235,7 +253,7 @@ def SafeToMove(instr, blockl, loopinvariants, cfg, inn, blockslabel, loop): #blo
 
 
     #Dominates all loop exits
-    if blockl not in doms['end']:
+    if blockl not in doms['realend']:
         return False
 
     return True
@@ -243,16 +261,33 @@ def SafeToMove(instr, blockl, loopinvariants, cfg, inn, blockslabel, loop): #blo
 
 
 def natLoops(cfg, reverse):
+    #TODO: I think my doms might be broken :( end shouldn't be a dom of cond!!
+    #print("original cfg: " + str(cfg))
     doms = finddoms(cfg)[0]
+    #print("original doms: " + str(doms))
+    newcfg = {}
     natloops = {}
 
     backedges = []
-    for node in cfg.keys():
-        for child in cfg[node]:
-            if child in doms[node]:
-                if (child, node) not in backedges: #otherwise both directions will be put in
-                    backedges.append((node, child))
+    oldbackedges = None
+    while backedges != oldbackedges:
+        oldbackedges = backedges
+        for node in cfg.keys():
+            for child in cfg[node]:
+                #print("node, child: " + str(node) + ", " + str(child))
+                """if node in newcfg.keys():
+                    newcfg[node] = newcfg[node] + [child]
+                else:
+                    newcfg[node] = [child]
+                newdoms = finddoms(newcfg)[0]
+                #print("newcfg: " + str(newcfg))
+                #print("newdoms: " + str(newdoms))"""
+                if child in doms[node]:
+                    if (child, node) not in backedges: #otherwise both directions will be put in
+                        #print("add to backedges")
+                        backedges.append((node, child))
 
+    #print("backedges: " + str(backedges))
 
     for (A, B) in backedges:
         loopy = [A, B]
@@ -288,10 +323,10 @@ def addToLoop(header, currnode, B, loopy, reverse):
 
 
 
-def mergePreheaders(cfg, reverse, loopHeader, labelstoblocks, loop):
+def mergePreheaders(cfg, reverse, loopHeader, labelstoblocks, loop, newpre):
     reverse = cfgreverse(cfg)
-    newEmptyPreheader = "singlePre"
-    labelstoblocks["singlePre"] = [{"label": "singlePre"}]
+    newEmptyPreheader = "singlePre" + str(newpre)
+    labelstoblocks[newEmptyPreheader] = [{"label": newEmptyPreheader}]
     for pre in reverse[loopHeader]:
         if pre not in loop:
             cfg[pre].insert(0, newEmptyPreheader)
@@ -408,7 +443,7 @@ def dataflow(blockslabel, cfg, init, merge, transfer):
             inn[block] = init
 
 
-        if block != "end":
+        if block != "realend":
             oldoutblock = out[block]
 
             out[block] = transfer(block, inn[block], labels)
@@ -443,12 +478,12 @@ def finddoms(cfg):
     olddom = None
     dom = {}
 
-    for vertex in (list(cfg.keys()) + ['end']):
-        dom[vertex] = set(cfg.keys()) | {'end'}
+    for vertex in (list(cfg.keys()) + ['realend']):
+        dom[vertex] = set(cfg.keys()) | {'realend'}
     domlevel = {}
     while dom != olddom:
         olddom = dom
-        for vertex in (list(cfg.keys()) + ['end']):
+        for vertex in (list(cfg.keys()) + ['realend']):
             if vertex not in list(predcfg.keys()):
                 currdoms = set({vertex})
                 currdomslevel = {}
@@ -479,7 +514,7 @@ def domtree(domlevel, cfg):
     oldtree = None
     while oldtree != tree:
         oldtree = tree
-        for vertex in (list(cfg.keys()) + ['end']):
+        for vertex in (list(cfg.keys()) + ['realend']):
             if vertex in reverse.keys() and reverse[vertex] is not None: #AKA has some pred AKA not a starter block
                 currdomlevels = domlevel[vertex]
                 keysonly = list(currdomlevels.keys())
@@ -507,7 +542,7 @@ def domfrontier(function):
 
     reversedoms = cfgreverse(doms)
     frontier = {}
-    for node in (list(cfg.keys()) + ['end']):
+    for node in (list(cfg.keys()) + ['realend']):
         frontier[node] = []
         postdoms = reversedoms[node]
         for postdom in postdoms:
@@ -605,7 +640,7 @@ def basicblocks(onefunc):
 
 def getcfg(blocks, labelstoblock):
     currlabel = "start"
-    nextlabel = "end"
+    nextlabel = "realend"
     cfg = {}
     for block in blocks:
         if len(block) > 0:
@@ -619,9 +654,9 @@ def getcfg(blocks, labelstoblock):
                 cfg[currlabel] = [lastinstr.get("labels")[0]]
                 cfg[currlabel].append(lastinstr.get("labels")[1]) #2 children blocks
             elif lastinstr.get("op") == "ret":
-                cfg[currlabel] = ["end"] #return goes to end
+                cfg[currlabel] = ["realend"] #return goes to end
             elif blocks.index(block) == len(blocks)-1:
-                cfg[currlabel] = ["end"]  #last block goes to end IF it doesn't end with a jmp/br
+                cfg[currlabel] = ["realend"]  #last block goes to end IF it doesn't end with a jmp/br
             else: 
                 nextblock = blocks[blocks.index(block)+1]
                 for key, val in labelstoblock.items(): #this is just to get the label of next block

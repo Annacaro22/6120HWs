@@ -29,9 +29,9 @@ def main():
 
         #test1 = testdoms(doms, cfgreverse(cfg))
 
-        test2 = testdomtree(doms, tree, cfg)
+        testdomtree(doms, tree, cfg)
 
-        test3 = testfrontier(doms, frontier, cfg)
+        testfrontier(doms, frontier, cfg)
 
 
 
