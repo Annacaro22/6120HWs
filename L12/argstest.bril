@@ -1,0 +1,22 @@
+@main (n:int) {
+    x: int = const 5;
+    b: bool = gt n x;
+    
+    br b .true .false;
+
+.true:
+    print x;
+    b2: bool = const true;
+    br b2 .doubletrue .false;
+
+
+.doubletrue:
+    print x;
+    ret;
+
+.false:
+    y: int = const 42;
+    print y;
+    print x;
+    ret;
+}

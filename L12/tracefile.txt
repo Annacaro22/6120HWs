@@ -1,0 +1,8 @@
+{"dest":"b","op":"const","type":"bool","value":true}
+{"dest":"x","op":"const","type":"int","value":5}
+{"dest":"x","op":"const","type":"int","value":12}
+{"args":["b"],"labels":["true","false"],"op":"br"}
+{ "branch value": true }
+{"args":["x"],"op":"print"}
+12
+{"op":"ret"}
