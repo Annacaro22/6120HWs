@@ -13,28 +13,6 @@ def main():
     programmy = json.load(sys.stdin)
 
     trace = fulltrace.get("path")
-
-    """traceoldmul = [{"dest":"b","op":"const","type":"bool","value":True},
-{"dest":"x","op":"const","type":"int","value":5},
-{"dest":"x","op":"const","type":"int","value":12},
-{"args":["b"],"labels":["true","false"],"op":"br"},
-{"args":["x"],"op":"print"},
-{"dest":"b2","op":"const","type":"bool","value":True},
-{"args":["b2"],"labels":["doubletrue","false"],"op":"br"},
-{"args":["x"],"op":"print"},
-{"op":"ret"}
-]
-
-
-    traceold = [{"dest":"b","op":"const","type":"bool","value":True},
-{"dest":"x","op":"const","type":"int","value":5},
-{"dest":"x","op":"const","type":"int","value":12},
-{"args":["b"],"labels":["true","false"],"op":"br"},
-{"args":["x"],"op":"print"},
-{"op":"ret"}
-]"""
-
-    #just have to load in trace (and truefalse as part of trace) from terminal somehow
     
     newprogrammy = copy.copy(programmy)
     
@@ -76,9 +54,6 @@ def main():
 
     functionindex+=1
 
-
-    #print(json.dumps(newprogrammy))
-
     with open("outfile.json", "w") as outfile:
         json.dump(newprogrammy, outfile)
     #I learned how to do this writing json to outfile from this stackoverflow post: 
@@ -90,7 +65,6 @@ def main():
 def inserting(branchinfo, labelstoblock):
     _, brinstr, booldef, _, branchvalue = branchinfo
 
-    print("inserting" + str(brinstr))
 
     instrlist = []
     
@@ -119,7 +93,6 @@ def inserting(branchinfo, labelstoblock):
 
 
 def findbranches(trace, program):
-    print("findbranches")
     allbranchinfo = []
     traceindex = 0
     for instr in trace:
@@ -138,7 +111,6 @@ def findbranches(trace, program):
 
 
 def getbooldef(trace, brinstr, brindex):
-    print("getbooldef")
     booldef = {}
     b = brinstr.get("args")[0]
     traceindex = 0
@@ -165,97 +137,6 @@ def removelabels(program):
             numlabels+=1
 
     return newprogram, numlabels
-
-
-
-
-
-
-
-
-
-
-
-
-
-#edits trace to remove jumps and replace branches with guards
-def fixtrace(trace):
-    newtrace = []
-    removelabels = []
-    for instr in trace:
-        if instr.get("op") == "br":
-            removelabels.append(instr.get("labels")[0])
-            guardy = {}
-            guardy["args"] = instr.get("args")
-            guardy["labels"] = instr.get("labels")[1]
-            guardy["op"] = "guard"
-            newtrace.append(guardy)
-        elif instr.get("op") != "jmp":
-            newtrace.append(instr)
-
-    return newtrace, removelabels
-
-
-
-
-#stitches trace back into program;
-#adds speculate and commit, adds the guards where they were replaced in the trace, and deletes uneccesary labels & jumps
-def stitch(trace, program, removelabels):
-    program.insert(0, {"op" : "spectulate"})
-    traceindex = 0
-    for instr in program:
-        if instr in trace:
-            traceindex+=1
-        else:
-            if "label" in instr.keys():
-                if instr.get("label") in removelabels:
-                    program.remove(instr)
-            elif instr.get("op") == "br":
-                progindex = program.index(instr)
-                program.insert(progindex, trace[traceindex])
-                program.remove(instr)
-                program.insert(progindex+1, {"op":"commit"})
-                traceindex+=1
-    
-
-    
-            
-
-
-
-
-
-
-
-
-    
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def cfgreverse(cfg):
-    reverse = {}
-    for block in list(cfg.keys()):
-        for succ in cfg[block]:
-            if succ in list(reverse.keys()):
-                reverse[succ] = reverse[succ] + [block]
-            else:
-                reverse[succ] = [block]
-    return reverse
 
 
 
